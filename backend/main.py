@@ -99,6 +99,21 @@ def stream(stream_id: str):
     )
 
 # ---------------------------------------------------------------------------
+# Telemetry endpoint
+# ---------------------------------------------------------------------------
+
+@app.get("/api/telemetry/{stream_id}")
+def get_telemetry(stream_id: str):
+    if not manager.get_worker(stream_id):
+        raise HTTPException(404, detail="Stream not found")
+    # TODO: replace with real data sources (ROS topics, k8s API, etc.)
+    return {
+        "battery": None,
+        "pods": [],
+        "status": "online",
+    }
+
+# ---------------------------------------------------------------------------
 # Serve frontend (must be last — catch-all)
 # ---------------------------------------------------------------------------
 

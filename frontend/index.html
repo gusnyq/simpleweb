@@ -12,12 +12,38 @@
     <h1>Camera Monitor</h1>
     <form id="add-form">
       <input id="input-id"  type="text" placeholder="Camera ID (e.g. cam0)" required />
-      <input id="input-url" type="text" placeholder="MJPEG URL (e.g. http://localhost:8080/stream?topic=/camera/image_raw)" required />
+      <input id="input-url" type="text" placeholder="MJPEG URL" required />
       <button type="submit">Add stream</button>
     </form>
   </header>
 
   <main id="grid"></main>
+
+  <!-- Expand modal -->
+  <div id="modal" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-box">
+      <div class="modal-header">
+        <span id="modal-title"></span>
+        <button id="modal-close">&#x2715;</button>
+      </div>
+      <img id="modal-img" alt="" />
+      <div class="modal-telemetry">
+        <div class="tele-item">
+          <span class="tele-label">Battery</span>
+          <span id="modal-battery" class="tele-value">—</span>
+        </div>
+        <div class="tele-item">
+          <span class="tele-label">Pods</span>
+          <span id="modal-pods" class="tele-value">—</span>
+        </div>
+        <div class="tele-item tele-status-item">
+          <span id="modal-status-dot" class="status-dot"></span>
+          <span id="modal-status" class="tele-value">—</span>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <script src="app.js"></script>
 </body>

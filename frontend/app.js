@@ -1,10 +1,14 @@
-const API = "";          // same origin — backend serves the frontend
-const POLL_MS = 1000;    // detection label refresh interval
+const API          = "";     // same origin
+const POLL_DET_MS  = 1000;   // detection label refresh
+const POLL_TELE_MS = 3000;   // telemetry refresh
 
-const grid = document.getElementById("grid");
+const grid  = document.getElementById("grid");
+const modal = document.getElementById("modal");
 
-// stream_id -> { card, img, detectionList, pollTimer }
+// stream_id -> { card, img, detectionList, batEl, podsEl, dotEl, detTimer, teleTimer, telemetry }
 const cameras = new Map();
+
+let modalStreamId = null;
 
 // ---------------------------------------------------------------------------
 // Boot
@@ -12,7 +16,6 @@ const cameras = new Map();
 
 async function init() {
   const ids = await apiFetch("GET", "/api/streams");
-  // Re-add any streams that were already registered in the backend
   for (const id of ids) addCard(id);
   renderEmpty();
 
@@ -21,7 +24,6 @@ async function init() {
     const id  = document.getElementById("input-id").value.trim();
     const url = document.getElementById("input-url").value.trim();
     if (!id || !url) return;
-
     try {
       await apiFetch("POST", "/api/streams", { id, url });
       addCard(id);
@@ -31,6 +33,11 @@ async function init() {
       alert(`Failed to add stream: ${err.message}`);
     }
   });
+
+  // Modal close actions
+  document.getElementById("modal-close").addEventListener("click", closeModal);
+  document.querySelector(".modal-backdrop").addEventListener("click", closeModal);
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeModal(); });
 }
 
 // ---------------------------------------------------------------------------
@@ -49,48 +56,101 @@ function addCard(id) {
       <button class="btn-remove">Remove</button>
     </div>
     <div class="card-stream">
-      <img alt="${escapeHtml(id)}" />
+      <img alt="${escapeHtml(id)}" title="Click to expand" />
       <div class="detection-list"></div>
+    </div>
+    <div class="card-telemetry">
+      <div class="tele-item">
+        <span class="tele-label">Battery</span>
+        <span class="tele-value bat-el">—</span>
+      </div>
+      <div class="tele-item">
+        <span class="tele-label">Pods</span>
+        <span class="tele-value pods-el">—</span>
+      </div>
+      <div class="tele-item tele-status-item">
+        <span class="status-dot dot-el"></span>
+        <span class="tele-value status-el">—</span>
+      </div>
     </div>`;
 
-  const img = card.querySelector("img");
+  const img           = card.querySelector("img");
   const detectionList = card.querySelector(".detection-list");
+  const batEl         = card.querySelector(".bat-el");
+  const podsEl        = card.querySelector(".pods-el");
+  const dotEl         = card.querySelector(".dot-el");
+  const statusEl      = card.querySelector(".status-el");
 
-  // MJPEG — browser handles it natively; reconnect on error
+  // MJPEG stream — reconnect on error
   function attachStream() {
     img.src = `${API}/stream/${encodeURIComponent(id)}?t=${Date.now()}`;
   }
-  img.addEventListener("error", () => {
-    setTimeout(attachStream, 2000);
-  });
+  img.addEventListener("error", () => setTimeout(attachStream, 2000));
   attachStream();
+
+  // Click to expand
+  img.addEventListener("click", () => openModal(id));
 
   // Remove button
   card.querySelector(".btn-remove").addEventListener("click", () => removeCard(id));
 
-  // Detection label polling
-  const pollTimer = setInterval(() => pollDetections(id, detectionList), POLL_MS);
+  // Polling
+  const detTimer  = setInterval(() => pollDetections(id, detectionList), POLL_DET_MS);
+  const teleTimer = setInterval(() => pollTelemetry(id), POLL_TELE_MS);
+  pollTelemetry(id); // immediate first fetch
 
   grid.appendChild(card);
-  cameras.set(id, { card, img, detectionList, pollTimer });
+  cameras.set(id, { card, img, detectionList, batEl, podsEl, dotEl, statusEl, detTimer, teleTimer, telemetry: null });
 }
 
 async function removeCard(id) {
   try {
     await apiFetch("DELETE", `/api/streams/${encodeURIComponent(id)}`);
   } catch (err) {
-    // If already gone on the backend, still clean up the UI
     console.warn("Remove stream error:", err.message);
   }
 
   const cam = cameras.get(id);
   if (cam) {
-    clearInterval(cam.pollTimer);
-    cam.img.src = "";   // stop the MJPEG stream
+    clearInterval(cam.detTimer);
+    clearInterval(cam.teleTimer);
+    cam.img.src = "";
     cam.card.remove();
     cameras.delete(id);
   }
+
+  if (modalStreamId === id) closeModal();
   renderEmpty();
+}
+
+// ---------------------------------------------------------------------------
+// Modal
+// ---------------------------------------------------------------------------
+
+function openModal(id) {
+  const cam = cameras.get(id);
+  if (!cam) return;
+
+  modalStreamId = id;
+  document.getElementById("modal-title").textContent = id;
+  document.getElementById("modal-img").src =
+    `${API}/stream/${encodeURIComponent(id)}?t=${Date.now()}`;
+
+  applyTelemetryToModal(cam.telemetry);
+  modal.classList.remove("hidden");
+}
+
+function closeModal() {
+  modal.classList.add("hidden");
+  document.getElementById("modal-img").src = "";
+  modalStreamId = null;
+}
+
+function applyTelemetryToModal(data) {
+  document.getElementById("modal-battery").textContent  = formatBattery(data?.battery);
+  document.getElementById("modal-pods").textContent     = formatPods(data?.pods, true);
+  document.getElementById("modal-status").textContent   = data?.status ?? "—";
+  applyStatusDot(document.getElementById("modal-status-dot"), data?.status);
 }
 
 // ---------------------------------------------------------------------------
@@ -100,27 +160,67 @@ async function removeCard(id) {
 async function pollDetections(id, listEl) {
   try {
     const detections = await apiFetch("GET", `/api/detections/${encodeURIComponent(id)}`);
-    renderDetections(listEl, detections);
-  } catch {
-    // silently ignore — stream may be reconnecting
-  }
-}
-
-function renderDetections(listEl, detections) {
-  // Count occurrences of each label
-  const counts = {};
-  for (const d of detections) {
-    counts[d.label] = (counts[d.label] ?? 0) + 1;
-  }
-
-  listEl.innerHTML = Object.entries(counts)
-    .map(([label, n]) =>
-      `<span class="detection-badge">${escapeHtml(label)}${n > 1 ? ` ×${n}` : ""}</span>`)
-    .join("");
+    const counts = {};
+    for (const d of detections) counts[d.label] = (counts[d.label] ?? 0) + 1;
+    listEl.innerHTML = Object.entries(counts)
+      .map(([label, n]) =>
+        `<span class="detection-badge">${escapeHtml(label)}${n > 1 ? ` ×${n}` : ""}</span>`)
+      .join("");
+  } catch { /* silently ignore — stream may be reconnecting */ }
 }
 
 // ---------------------------------------------------------------------------
-// Helpers
+// Telemetry polling
+// ---------------------------------------------------------------------------
+
+async function pollTelemetry(id) {
+  try {
+    const data = await apiFetch("GET", `/api/telemetry/${encodeURIComponent(id)}`);
+    const cam = cameras.get(id);
+    if (!cam) return;
+
+    cam.telemetry = data;
+
+    // Update card
+    cam.batEl.textContent    = formatBattery(data.battery);
+    cam.batEl.className      = "tele-value bat-el " + batteryClass(data.battery);
+    cam.podsEl.textContent   = formatPods(data.pods, false);
+    cam.statusEl.textContent = data.status ?? "—";
+    applyStatusDot(cam.dotEl, data.status);
+
+    // Keep modal in sync
+    if (modalStreamId === id) applyTelemetryToModal(data);
+  } catch { /* silently ignore */ }
+}
+
+// ---------------------------------------------------------------------------
+// Formatting helpers
+// ---------------------------------------------------------------------------
+
+function formatBattery(val) {
+  return val != null ? `${val}%` : "—";
+}
+
+function batteryClass(val) {
+  if (val == null) return "";
+  if (val >= 60)   return "bat-high";
+  if (val >= 20)   return "bat-medium";
+  return "bat-low";
+}
+
+function formatPods(pods, full) {
+  if (!pods || pods.length === 0) return "—";
+  if (full) return pods.join(", ");
+  if (pods.length <= 2) return pods.join(", ");
+  return `${pods.length} pods`;
+}
+
+function applyStatusDot(el, status) {
+  el.className = "status-dot" + (status === "online" ? " online" : status === "offline" ? " offline" : "");
+}
+
+// ---------------------------------------------------------------------------
+// Misc
 // ---------------------------------------------------------------------------
 
 function renderEmpty() {
