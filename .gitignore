@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.venv/
+venv/
+env/
+
+# YOLOv8 weights (downloaded at runtime)
+*.pt
+
+# OpenCV / misc build artifacts
+*.so
+
+# OS
+.DS_Store
+Thumbs.db
