@@ -68,6 +68,10 @@ function addCard(id) {
         <span class="tele-label">Pods</span>
         <span class="tele-value pods-el">—</span>
       </div>
+      <div class="tele-item">
+        <span class="tele-label">GPS</span>
+        <span class="tele-value gps-el">—</span>
+      </div>
       <div class="tele-item tele-status-item">
         <span class="status-dot dot-el"></span>
         <span class="tele-value status-el">—</span>
@@ -78,6 +82,7 @@ function addCard(id) {
   const detectionList = card.querySelector(".detection-list");
   const batEl         = card.querySelector(".bat-el");
   const podsEl        = card.querySelector(".pods-el");
+  const gpsEl         = card.querySelector(".gps-el");
   const dotEl         = card.querySelector(".dot-el");
   const statusEl      = card.querySelector(".status-el");
 
@@ -100,7 +105,7 @@ function addCard(id) {
   pollTelemetry(id); // immediate first fetch
 
   grid.appendChild(card);
-  cameras.set(id, { card, img, detectionList, batEl, podsEl, dotEl, statusEl, detTimer, teleTimer, telemetry: null });
+  cameras.set(id, { card, img, detectionList, batEl, podsEl, gpsEl, dotEl, statusEl, detTimer, teleTimer, telemetry: null });
 }
 
 async function removeCard(id) {
@@ -149,6 +154,7 @@ function closeModal() {
 function applyTelemetryToModal(data) {
   document.getElementById("modal-battery").textContent  = formatBattery(data?.battery);
   document.getElementById("modal-pods").textContent     = formatPods(data?.pods, true);
+  document.getElementById("modal-gps").textContent      = formatGps(data?.gps, true);
   document.getElementById("modal-status").textContent   = data?.status ?? "—";
   applyStatusDot(document.getElementById("modal-status-dot"), data?.status);
 }
@@ -185,6 +191,7 @@ async function pollTelemetry(id) {
     cam.batEl.textContent    = formatBattery(data.battery);
     cam.batEl.className      = "tele-value bat-el " + batteryClass(data.battery);
     cam.podsEl.textContent   = formatPods(data.pods, false);
+    cam.gpsEl.textContent    = formatGps(data.gps, false);
     cam.statusEl.textContent = data.status ?? "—";
     applyStatusDot(cam.dotEl, data.status);
 
@@ -213,6 +220,12 @@ function formatPods(pods, full) {
   if (full) return pods.join(", ");
   if (pods.length <= 2) return pods.join(", ");
   return `${pods.length} pods`;
+}
+
+function formatGps(gps, full) {
+  if (!gps || gps.lat == null || gps.lon == null) return "—";
+  const precision = full ? 6 : 4;
+  return `${gps.lat.toFixed(precision)}, ${gps.lon.toFixed(precision)}`;
 }
 
 function applyStatusDot(el, status) {
@@ -256,5 +269,107 @@ function escapeHtml(s) {
 }
 
 // ---------------------------------------------------------------------------
+// World map background
+// ---------------------------------------------------------------------------
 
+async function initWorldMap() {
+  const canvas = document.getElementById("world-canvas");
+  const ctx    = canvas.getContext("2d");
+
+  function setSize() {
+    canvas.width  = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+  setSize();
+
+  if (typeof d3 === "undefined" || typeof topojson === "undefined") {
+    console.error("World map: D3 or TopoJSON failed to load from CDN.");
+    drawFallbackGrid(ctx);
+    window.addEventListener("resize", () => { setSize(); drawFallbackGrid(ctx); });
+    return;
+  }
+
+  let world;
+  try {
+    world = await d3.json("https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json");
+  } catch (e) {
+    console.error("World map: failed to fetch world-atlas data:", e);
+    drawFallbackGrid(ctx);
+    window.addEventListener("resize", () => { setSize(); drawFallbackGrid(ctx); });
+    return;
+  }
+
+  const countries = topojson.feature(world, world.objects.countries);
+  const borders   = topojson.mesh(world, world.objects.countries, (a, b) => a !== b);
+  const graticule = d3.geoGraticule()();
+  const sphere    = { type: "Sphere" };
+
+  function draw() {
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    canvas.width  = w;
+    canvas.height = h;
+
+    const projection = d3.geoNaturalEarth1()
+      .scale(w / 6.1)
+      .translate([w / 2, h / 2]);
+
+    const path = d3.geoPath(projection, ctx);
+
+    // Ocean
+    ctx.beginPath();
+    path(sphere);
+    ctx.fillStyle = "#0b0b0b";
+    ctx.fill();
+
+    // Graticule
+    ctx.beginPath();
+    path(graticule);
+    ctx.strokeStyle = "#1a221a";
+    ctx.lineWidth = 0.5;
+    ctx.stroke();
+
+    // Land
+    ctx.beginPath();
+    path(countries);
+    ctx.fillStyle = "#253525";
+    ctx.fill();
+
+    // Country borders
+    ctx.beginPath();
+    path(borders);
+    ctx.strokeStyle = "#3a503a";
+    ctx.lineWidth = 0.6;
+    ctx.stroke();
+
+    // Sphere outline
+    ctx.beginPath();
+    path(sphere);
+    ctx.strokeStyle = "#222";
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+
+  draw();
+  window.addEventListener("resize", draw);
+}
+
+function drawFallbackGrid(ctx) {
+  const w = ctx.canvas.width;
+  const h = ctx.canvas.height;
+  ctx.clearRect(0, 0, w, h);
+  ctx.strokeStyle = "#1e2e1e";
+  ctx.lineWidth = 1;
+  const step = 40;
+  for (let x = 0; x < w; x += step) {
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
+  }
+  for (let y = 0; y < h; y += step) {
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+  }
+}
+
+// ---------------------------------------------------------------------------
+
+initWorldMap();
 init();

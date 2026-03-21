@@ -8,6 +8,8 @@
 </head>
 <body>
 
+  <canvas id="world-canvas"></canvas>
+
   <header>
     <h1>Camera Monitor</h1>
     <form id="add-form">
@@ -37,6 +39,10 @@
           <span class="tele-label">Pods</span>
           <span id="modal-pods" class="tele-value">—</span>
         </div>
+        <div class="tele-item">
+          <span class="tele-label">GPS</span>
+          <span id="modal-gps" class="tele-value">—</span>
+        </div>
         <div class="tele-item tele-status-item">
           <span id="modal-status-dot" class="status-dot"></span>
           <span id="modal-status" class="tele-value">—</span>
@@ -45,6 +51,8 @@
     </div>
   </div>
 
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

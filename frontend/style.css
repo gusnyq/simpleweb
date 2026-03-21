@@ -1,13 +1,25 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
-  background: #111;
+  background: #090909;
   color: #eee;
   font-family: system-ui, sans-serif;
   display: flex;
   flex-direction: column;
   min-height: 100vh;
 }
+
+/* ---- World map background ---- */
+
+#world-canvas {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* Everything above the map */
+header, #grid, .modal { position: relative; z-index: 1; }
 
 /* ---- Header ---- */
 
