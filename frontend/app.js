@@ -38,6 +38,7 @@ async function init() {
   document.getElementById("modal-close").addEventListener("click", closeModal);
   document.querySelector(".modal-backdrop").addEventListener("click", closeModal);
   document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeModal(); });
+  document.getElementById("modal-waypoints-btn").addEventListener("click", uploadWaypoints);
 }
 
 // ---------------------------------------------------------------------------
@@ -149,6 +150,30 @@ function closeModal() {
   modal.classList.add("hidden");
   document.getElementById("modal-img").src = "";
   modalStreamId = null;
+}
+
+async function uploadWaypoints() {
+  const fileInput  = document.getElementById("modal-waypoints-input");
+  const statusEl   = document.getElementById("modal-waypoints-status");
+  const file = fileInput.files[0];
+  if (!file) { statusEl.textContent = "No file selected."; return; }
+
+  let parsed;
+  try {
+    parsed = JSON.parse(await file.text());
+  } catch {
+    statusEl.textContent = "Invalid JSON.";
+    return;
+  }
+
+  statusEl.textContent = "Uploading…";
+  try {
+    await apiFetch("POST", "/api/waypoints", parsed);
+    statusEl.textContent = "Uploaded.";
+    fileInput.value = "";
+  } catch (err) {
+    statusEl.textContent = `Error: ${err.message}`;
+  }
 }
 
 function applyTelemetryToModal(data) {

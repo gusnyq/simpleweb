@@ -1,6 +1,8 @@
 import time
 from pathlib import Path
+from typing import List
 
+import httpx
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
@@ -29,6 +31,9 @@ FRONTEND_DIR = Path(__file__).parent.parent / "frontend"
 class StreamConfig(BaseModel):
     id: str
     url: str
+
+class WaypointPayload(BaseModel):
+    points: List[List[float]]
 
 # ---------------------------------------------------------------------------
 # Stream management endpoints
@@ -59,6 +64,24 @@ def get_detections(stream_id: str):
     if not worker:
         raise HTTPException(404, detail="Stream not found")
     return worker.get_detections()
+
+# ---------------------------------------------------------------------------
+# Waypoints proxy endpoint
+# ---------------------------------------------------------------------------
+
+WAYPOINTS_URL = "http://0.0.0.0:8989/upload_waypoints"
+
+@app.post("/api/waypoints")
+async def upload_waypoints(payload: WaypointPayload):
+    async with httpx.AsyncClient() as client:
+        try:
+            resp = await client.post(WAYPOINTS_URL, json=payload.model_dump(), timeout=10.0)
+            resp.raise_for_status()
+        except httpx.RequestError as e:
+            raise HTTPException(502, detail=f"Could not reach waypoint service: {e}")
+        except httpx.HTTPStatusError as e:
+            raise HTTPException(e.response.status_code, detail=e.response.text)
+    return {"status": "ok"}
 
 # ---------------------------------------------------------------------------
 # MJPEG streaming endpoint

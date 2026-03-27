@@ -284,6 +284,41 @@ header h1 {
   display: block;
 }
 
+.modal-waypoints {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: #161616;
+  border-top: 1px solid #2a2a2a;
+  font-size: 0.8rem;
+  flex-shrink: 0;
+}
+.waypoints-label {
+  color: #7a9a7a;
+  white-space: nowrap;
+}
+.waypoints-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+#modal-waypoints-btn {
+  padding: 3px 10px;
+  background: #2a4a2a;
+  color: #ccc;
+  border: 1px solid #3a6a3a;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+#modal-waypoints-btn:hover { background: #3a5a3a; }
+#modal-waypoints-status {
+  color: #7a9a7a;
+  font-size: 0.75rem;
+}
+
 .modal-telemetry {
   display: flex;
   align-items: center;

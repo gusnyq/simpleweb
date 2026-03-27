@@ -2,7 +2,7 @@
 
 BACKEND_PORT=8000
 STREAMS_PORT=9001
-STREAM_COUNT=4
+STREAM_COUNT=2
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
