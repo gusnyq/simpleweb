@@ -40,48 +40,17 @@ header h1 {
   white-space: nowrap;
 }
 
-#add-form {
-  display: flex;
-  gap: 8px;
-  flex: 1;
-  flex-wrap: wrap;
-}
-
-#add-form input {
-  flex: 1;
-  min-width: 160px;
-  padding: 5px 10px;
-  background: #2a2a2a;
-  border: 1px solid #444;
-  border-radius: 4px;
-  color: #eee;
-  font-size: 0.82rem;
-}
-
-#add-form input:focus { outline: none; border-color: #4a9eff; }
-
-#add-form button {
-  padding: 5px 14px;
-  background: #4a9eff;
-  border: none;
-  border-radius: 4px;
-  color: #fff;
-  font-size: 0.82rem;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-#add-form button:hover { background: #3a8eef; }
 
 /* ---- Camera grid ---- */
 
 #grid {
   flex: 1;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 10px;
-  padding: 10px;
+  grid-template-columns: repeat(2, minmax(0, 360px));
+  gap: 32px;
+  padding: 32px;
   align-content: start;
+  justify-content: center;
 }
 
 /* ---- Camera card ---- */
@@ -131,8 +100,8 @@ header h1 {
 
 .card-stream img {
   width: 100%;
-  height: 150px;
-  object-fit: cover;
+  height: auto;
+  object-fit: contain;
   display: block;
   cursor: pointer;
 }
@@ -276,36 +245,35 @@ header h1 {
 
 #modal-close:hover { color: #fff; }
 
-#modal-img {
-  width: 100%;
-  max-height: calc(92vh - 90px);
-  object-fit: contain;
-  background: #000;
-  display: block;
-}
-
 .modal-waypoints {
   display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 12px;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
   background: #161616;
   border-top: 1px solid #2a2a2a;
-  font-size: 0.8rem;
   flex-shrink: 0;
 }
-.waypoints-label {
-  color: #7a9a7a;
-  white-space: nowrap;
+#modal-waypoints-input {
+  width: 100%;
+  min-height: 120px;
+  background: #1e1e1e;
+  border: 1px solid #3a3a3a;
+  border-radius: 4px;
+  color: #eee;
+  font-family: monospace;
+  font-size: 0.8rem;
+  padding: 8px;
+  resize: vertical;
 }
+#modal-waypoints-input:focus { outline: none; border-color: #4a9eff; }
 .waypoints-row {
   display: flex;
   align-items: center;
   gap: 8px;
-  flex-wrap: wrap;
 }
 #modal-waypoints-btn {
-  padding: 3px 10px;
+  padding: 4px 14px;
   background: #2a4a2a;
   color: #ccc;
   border: 1px solid #3a6a3a;

@@ -21,6 +21,7 @@ app.add_middleware(
 )
 
 manager = StreamManager(inference_fps=5.0)
+_waypoints_urls: dict[str, str] = {}
 
 FRONTEND_DIR = Path(__file__).parent.parent / "frontend"
 
@@ -31,6 +32,7 @@ FRONTEND_DIR = Path(__file__).parent.parent / "frontend"
 class StreamConfig(BaseModel):
     id: str
     url: str
+    waypoints_url: str = ""
 
 class WaypointPayload(BaseModel):
     points: List[List[float]]
@@ -48,6 +50,7 @@ def list_streams():
 def add_stream(cfg: StreamConfig):
     if not manager.add_stream(cfg.id, cfg.url):
         raise HTTPException(400, detail="Stream ID already exists")
+    _waypoints_urls[cfg.id] = cfg.waypoints_url
     return {"status": "added", "id": cfg.id}
 
 
@@ -55,6 +58,7 @@ def add_stream(cfg: StreamConfig):
 def remove_stream(stream_id: str):
     if not manager.remove_stream(stream_id):
         raise HTTPException(404, detail="Stream not found")
+    _waypoints_urls.pop(stream_id, None)
     return {"status": "removed"}
 
 
@@ -69,13 +73,14 @@ def get_detections(stream_id: str):
 # Waypoints proxy endpoint
 # ---------------------------------------------------------------------------
 
-WAYPOINTS_URL = "http://0.0.0.0:8989/upload_waypoints"
-
-@app.post("/api/waypoints")
-async def upload_waypoints(payload: WaypointPayload):
+@app.post("/api/waypoints/{stream_id}")
+async def upload_waypoints(stream_id: str, payload: WaypointPayload):
+    waypoints_url = _waypoints_urls.get(stream_id)
+    if not waypoints_url:
+        raise HTTPException(404, detail="No waypoints URL registered for this stream")
     async with httpx.AsyncClient() as client:
         try:
-            resp = await client.post(WAYPOINTS_URL, json=payload.model_dump(), timeout=10.0)
+            resp = await client.post(waypoints_url, json=payload.model_dump(), timeout=10.0)
             resp.raise_for_status()
         except httpx.RequestError as e:
             raise HTTPException(502, detail=f"Could not reach waypoint service: {e}")

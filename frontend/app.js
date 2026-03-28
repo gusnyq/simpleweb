@@ -19,21 +19,6 @@ async function init() {
   for (const id of ids) addCard(id);
   renderEmpty();
 
-  document.getElementById("add-form").addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const id  = document.getElementById("input-id").value.trim();
-    const url = document.getElementById("input-url").value.trim();
-    if (!id || !url) return;
-    try {
-      await apiFetch("POST", "/api/streams", { id, url });
-      addCard(id);
-      renderEmpty();
-      e.target.reset();
-    } catch (err) {
-      alert(`Failed to add stream: ${err.message}`);
-    }
-  });
-
   // Modal close actions
   document.getElementById("modal-close").addEventListener("click", closeModal);
   document.querySelector(".modal-backdrop").addEventListener("click", closeModal);
@@ -139,38 +124,34 @@ function openModal(id) {
 
   modalStreamId = id;
   document.getElementById("modal-title").textContent = id;
-  document.getElementById("modal-img").src =
-    `${API}/stream/${encodeURIComponent(id)}?t=${Date.now()}`;
-
   applyTelemetryToModal(cam.telemetry);
   modal.classList.remove("hidden");
 }
 
 function closeModal() {
   modal.classList.add("hidden");
-  document.getElementById("modal-img").src = "";
   modalStreamId = null;
 }
 
 async function uploadWaypoints() {
-  const fileInput  = document.getElementById("modal-waypoints-input");
-  const statusEl   = document.getElementById("modal-waypoints-status");
-  const file = fileInput.files[0];
-  if (!file) { statusEl.textContent = "No file selected."; return; }
+  const textarea = document.getElementById("modal-waypoints-input");
+  const statusEl = document.getElementById("modal-waypoints-status");
+  const text = textarea.value.trim();
+  if (!text) { statusEl.textContent = "Nothing to send."; return; }
 
   let parsed;
   try {
-    parsed = JSON.parse(await file.text());
+    parsed = JSON.parse(text);
   } catch {
     statusEl.textContent = "Invalid JSON.";
     return;
   }
 
-  statusEl.textContent = "Uploading…";
+  statusEl.textContent = "Sending…";
   try {
-    await apiFetch("POST", "/api/waypoints", parsed);
-    statusEl.textContent = "Uploaded.";
-    fileInput.value = "";
+    await apiFetch("POST", `/api/waypoints/${encodeURIComponent(modalStreamId)}`, parsed);
+    statusEl.textContent = "Sent.";
+    textarea.value = "";
   } catch (err) {
     statusEl.textContent = `Error: ${err.message}`;
   }

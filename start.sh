@@ -30,12 +30,19 @@ done
 echo " ready."
 
 # Register streams into the backend
+# Each entry: "id|mjpeg_url|waypoints_url"
+STREAMS=(
+  "cam0|http://localhost:$STREAMS_PORT/stream/0|http://localhost:8989/upload_waypoints"
+  "cam1|http://localhost:$STREAMS_PORT/stream/1|http://localhost:8989/upload_waypoints"
+)
+
 echo "Registering streams..."
-for i in $(seq 0 $((STREAM_COUNT - 1))); do
+for entry in "${STREAMS[@]}"; do
+  IFS='|' read -r id mjpeg_url waypoints_url <<< "$entry"
   curl -sf -X POST "http://localhost:$BACKEND_PORT/api/streams" \
     -H "Content-Type: application/json" \
-    -d "{\"id\": \"cam$i\", \"url\": \"http://localhost:$STREAMS_PORT/stream/$i\"}" >/dev/null
-  echo "  cam$i -> http://localhost:$STREAMS_PORT/stream/$i"
+    -d "{\"id\": \"$id\", \"url\": \"$mjpeg_url\", \"waypoints_url\": \"$waypoints_url\"}" >/dev/null
+  echo "  $id -> $mjpeg_url (waypoints: $waypoints_url)"
 done
 
 echo ""

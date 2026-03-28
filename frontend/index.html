@@ -12,11 +12,6 @@
 
   <header>
     <h1>Camera Monitor</h1>
-    <form id="add-form">
-      <input id="input-id"  type="text" placeholder="Camera ID (e.g. cam0)" required />
-      <input id="input-url" type="text" placeholder="MJPEG URL" required />
-      <button type="submit">Add stream</button>
-    </form>
   </header>
 
   <main id="grid"></main>
@@ -29,12 +24,10 @@
         <span id="modal-title"></span>
         <button id="modal-close">&#x2715;</button>
       </div>
-      <img id="modal-img" alt="" />
       <div class="modal-waypoints">
-        <label class="waypoints-label">Upload Waypoints</label>
+        <textarea id="modal-waypoints-input" placeholder='Enter waypoints as JSON, e.g. [{"lat":1.23,"lon":4.56},...]'></textarea>
         <div class="waypoints-row">
-          <input type="file" id="modal-waypoints-input" accept=".json" />
-          <button id="modal-waypoints-btn">Upload</button>
+          <button id="modal-waypoints-btn">Send</button>
           <span id="modal-waypoints-status"></span>
         </div>
       </div>
